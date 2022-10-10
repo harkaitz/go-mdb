@@ -159,11 +159,10 @@ func CmdReadRec(key string, o Mdb, fp *os.File) (err error) {
 		for _, field := range fields {
 			if S.EqualFold(field.Name, "id") {
 				id = field.Value
-			} else {
-				err = o.Set(field.Name, field.Value)
-				if err != nil {
-					return err
-				}
+			}
+			err = o.Set(field.Name, field.Value)
+			if err != nil {
+				return err
 			}
 		}
 		if len(id)>0 {
