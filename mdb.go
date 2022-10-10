@@ -69,7 +69,6 @@ func Load(key string, id string, o Mdb) (err error) {
 	if err != nil {
 		return
 	}
-	o.Reset()
 	return o.Unmarshal(j)
 }
 
@@ -136,14 +135,11 @@ func CmdSet(key string, id string, obj Mdb, args []string) (err error) {
 	return Save(key, id, obj)
 }
 
-func CmdReadRec(key string, o Mdb, fp *os.File) (err error) {
+func CmdReadRec(key string, obj Mdb, fp *os.File) (err error) {
 	var rec     *recfile.Reader
 	var fields []recfile.Field
-	var objs   map[string]Mdb
 	var id     string
-	var obj    Mdb
 
-	objs = map[string]Mdb {}
 	rec  = recfile.NewReader(os.Stdin)
 
 	for {
@@ -154,26 +150,21 @@ func CmdReadRec(key string, o Mdb, fp *os.File) (err error) {
 		if err != nil {
 			return err
 		}
-		o.Reset()
+		obj.Reset()
 		id = ""
 		for _, field := range fields {
 			if S.EqualFold(field.Name, "id") {
 				id = field.Value
 			}
-			err = o.Set(field.Name, field.Value)
+			err = obj.Set(field.Name, field.Value)
 			if err != nil {
 				return err
 			}
 		}
-		if len(id)>0 {
-			objs[id] = o
-		} else {
+		if len(id)==0 {
 			err = fmt.Errorf("Registry without Id field.")
 			return
 		}
-	}
-
-	for id, obj = range objs {
 		err = Save(key, id, obj)
 		if err != nil {
 			return err

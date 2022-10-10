@@ -7,7 +7,7 @@ import (
 type Object map[string]string 
 
 func (s Object) Reset() {
-	s = make(map[string]string)
+	s = Object{}
 }
 
 func (s Object) Validate() error {
