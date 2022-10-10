@@ -27,7 +27,6 @@ Copyright (c) 2022 Harkaitz Agirre, harkaitz.aguirre@gmail.com`
 func main() {
 
 	var err  error
-	var obj  mdb.Object
 	
 	getopt.BoolLong("help", 'h')
 	kFlag := getopt.String('k', "GO-MDB::DEFAULT")
@@ -44,6 +43,7 @@ func main() {
 	key := *kFlag
 	op  := ""
 	id  := ""
+	obj := mdb.Object{}
 	if *lFlag        { op += "l" }
 	if *aFlag        { op += "a" }
 	if len(*gFlag)>0 { op += "g"; id = *gFlag }
@@ -57,15 +57,13 @@ func main() {
 	default: log.Fatal("Please specify only one operation.")
 	}
 
-	db := mdb.NewRedisClient()
-
 	switch op {
-	case "l": err = mdb.CmdList(db, key)
-	case "a": err = mdb.CmdAdd(db, key, &obj, getopt.Args())
-	case "g": err = mdb.CmdGet(db, key, id)
-	case "s": err = mdb.CmdSet(db, key, id, &obj, getopt.Args())	
-	case "d": err = mdb.CmdDel(db, key, getopt.Args())
-	case "D": err = mdb.DelAll(db, key)
+	case "l": err = mdb.CmdList(key)
+	case "a": err = mdb.CmdAdd(key, &obj, getopt.Args())
+	case "g": err = mdb.CmdGet(key, id)
+	case "s": err = mdb.CmdSet(key, id, &obj, getopt.Args())	
+	case "d": err = mdb.CmdDel(key, getopt.Args())
+	case "D": err = mdb.DelAll(key)
 	}
 	if err != nil {
 		log.Fatal(err)

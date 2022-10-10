@@ -16,6 +16,26 @@ type Mdb interface {
 	Unmarshal(b []byte)   error
 }
 
+var DB *redis.Client
+
+func init() {
+	redis_address  := os.Getenv("REDIS_ADDRESS")
+	redis_password := os.Getenv("REDIS_PASSWORD")
+	redis_opts     := redis.Options {}
+	if len(redis_address)>0 {
+		redis_opts.Addr = redis_address
+	} else {
+		redis_opts.Addr = "localhost:6379"
+	}
+	if len(redis_password)>0 {
+		redis_opts.Password = redis_password
+	}
+	DB = redis.NewClient(&redis_opts)
+	if err := DB.Ping().Err(); err != nil {
+		panic("Unable to connect to redis " + err.Error())
+	}
+}
+
 func SetKV(o Mdb, args []string) (e error) {
 	for _, arg := range args {
 		key, val, splet := S.Cut(arg, "=")
@@ -30,7 +50,7 @@ func SetKV(o Mdb, args []string) (e error) {
 	return
 }
 
-func Save(db *redis.Client, key string, id string, o Mdb) (err error) {
+func Save(key string, id string, o Mdb) (err error) {
 	j, err := o.Marshal()
 	if err != nil {
 		return
@@ -39,11 +59,11 @@ func Save(db *redis.Client, key string, id string, o Mdb) (err error) {
 	if err != nil {
 		return
 	}
-	return db.HSet(key, id, j).Err()
+	return DB.HSet(key, id, j).Err()
 }
 
-func Load(db *redis.Client, key string, id string, o Mdb) (err error) {
-	j, err := db.HGet(key, id).Bytes()
+func Load(key string, id string, o Mdb) (err error) {
+	j, err := DB.HGet(key, id).Bytes()
 	if err != nil {
 		return
 	}
@@ -51,36 +71,21 @@ func Load(db *redis.Client, key string, id string, o Mdb) (err error) {
 	return o.Unmarshal(j)
 }
 
-func List(db *redis.Client, key string) (ids []string, err error) {
-	return db.HKeys(key).Result()
+func List(key string) (ids []string, err error) {
+	return DB.HKeys(key).Result()
 }
 
-func Del(db *redis.Client, key string, id string) (err error) {
-	return db.HDel(key, id).Err()
+func Del(key string, id string) (err error) {
+	return DB.HDel(key, id).Err()
 }
 
-func DelAll(db *redis.Client, key string) (err error) {
-	return db.Del(key).Err()
+func DelAll(key string) (err error) {
+	return DB.Del(key).Err()
 }
 
-func NewRedisClient() (db *redis.Client) {
-	redis_address  := os.Getenv("REDIS_ADDRESS")
-	redis_password := os.Getenv("REDIS_PASSWORD")
-	redis_opts     := redis.Options {}
-	if len(redis_address)>0 {
-		redis_opts.Addr = redis_address
-	} else {
-		redis_opts.Addr = "localhost:6379"
-	}
-	if len(redis_password)>0 {
-		redis_opts.Password = redis_password
-	}
-	return redis.NewClient(&redis_opts)
-}
-
-func CmdList(db *redis.Client, key string) (err error) {
+func CmdList(key string) (err error) {
 	var ids []string
-	ids, err = List(db, key)
+	ids, err = List(key)
 	if err != nil {
 		return err
 	}
@@ -90,9 +95,9 @@ func CmdList(db *redis.Client, key string) (err error) {
 	return nil
 }
 
-func CmdDel(db *redis.Client, key string, ids []string) (err error) {
+func CmdDel(key string, ids []string) (err error) {
 	for _, id := range ids {
-		err = Del(db, key, id)
+		err = Del(key, id)
 		if err != nil {
 			return err
 		}
@@ -100,18 +105,18 @@ func CmdDel(db *redis.Client, key string, ids []string) (err error) {
 	return nil
 }
 
-func CmdAdd(db *redis.Client, key string, obj Mdb, args []string) (err error) {
+func CmdAdd(key string, obj Mdb, args []string) (err error) {
 	id  := uuid.New().String()
 
 	if err = SetKV(obj, args); err != nil {
 		return err
 	}
 		
-	return Save(db, key, id, obj)
+	return Save(key, id, obj)
 }
 
-func CmdGet(db *redis.Client, key string, id string) (err error) {
-	j, err := db.HGet(key, id).Bytes()
+func CmdGet(key string, id string) (err error) {
+	j, err := DB.HGet(key, id).Bytes()
 	if err != nil {
 		return
 	}
@@ -119,12 +124,12 @@ func CmdGet(db *redis.Client, key string, id string) (err error) {
 	return nil
 }
 
-func CmdSet(db *redis.Client, key string, id string, obj Mdb, args []string) (err error) {
-	if err = Load(db, key, id, obj); err != nil {
+func CmdSet(key string, id string, obj Mdb, args []string) (err error) {
+	if err = Load(key, id, obj); err != nil {
 		return err
 	}
 	if err = SetKV(obj, args); err != nil {
 		return err
 	}
-	return Save(db, key, id, obj)
+	return Save(key, id, obj)
 }
