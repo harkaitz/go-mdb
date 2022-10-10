@@ -3,7 +3,9 @@ package mdb
 import (
 	"github.com/go-redis/redis"
 	"github.com/google/uuid"
+	"github.com/harkaitz/go-recutils"
 	"os"
+	"io"
 	"fmt"
 	S "strings"
 )
@@ -132,4 +134,52 @@ func CmdSet(key string, id string, obj Mdb, args []string) (err error) {
 		return err
 	}
 	return Save(key, id, obj)
+}
+
+func CmdReadRec(key string, o Mdb, fp *os.File) (err error) {
+	var rec     *recfile.Reader
+	var fields []recfile.Field
+	var objs   map[string]Mdb
+	var id     string
+	var obj    Mdb
+
+	objs = map[string]Mdb {}
+	rec  = recfile.NewReader(os.Stdin)
+
+	for {
+		fields, err = rec.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		o.Reset()
+		id = ""
+		for _, field := range fields {
+			if S.EqualFold(field.Name, "id") {
+				id = field.Value
+			} else {
+				err = o.Set(field.Name, field.Value)
+				if err != nil {
+					return err
+				}
+			}
+		}
+		if len(id)>0 {
+			objs[id] = o
+		} else {
+			err = fmt.Errorf("Registry without Id field.")
+			return
+		}
+	}
+
+	for id, obj = range objs {
+		err = Save(key, id, obj)
+		if err != nil {
+			return err
+		}
+	}
+	
+	return nil
 }

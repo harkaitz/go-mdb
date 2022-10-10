@@ -36,6 +36,7 @@ func main() {
 	sFlag := getopt.String('s', "")
 	dFlag := getopt.Bool('d')
 	DFlag := getopt.Bool('D')
+	RFlag := getopt.Bool('R')
 	
 	getopt.SetUsage(func() { fmt.Println(help + "\n\n" + copyrightLine) })
 	getopt.Parse()
@@ -50,6 +51,7 @@ func main() {
 	if len(*sFlag)>0 { op += "s"; id = *sFlag }
 	if *dFlag        { op += "d" }
 	if *DFlag        { op += "D" }
+	if *RFlag        { op += "R" }
 	
 	switch len(op) {
 	case 0: getopt.Usage(); os.Exit(0);
@@ -64,6 +66,7 @@ func main() {
 	case "s": err = mdb.CmdSet(key, id, &obj, getopt.Args())	
 	case "d": err = mdb.CmdDel(key, getopt.Args())
 	case "D": err = mdb.DelAll(key)
+	case "R": err = mdb.CmdReadRec(key, &obj, os.Stdin)
 	}
 	if err != nil {
 		log.Fatal(err)
